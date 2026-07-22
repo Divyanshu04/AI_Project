@@ -1,0 +1,32 @@
+CLINICASENSE AI - DEMO CLINICAL KNOWLEDGE BASE
+
+TOPIC: CHEST PAIN AND DYSPNEA
+
+This document is a demonstration knowledge resource for
+the ClinicaSense AI prototype.
+
+Chest pain accompanied by shortness of breath may represent
+a potentially serious clinical presentation. Clinical
+assessment should consider the patient's symptoms, medical
+history, vital signs, physical examination, and appropriate
+diagnostic evaluation.
+
+Important clinical considerations may include:
+
+- Assessment of the severity and characteristics of chest pain.
+- Evaluation of vital signs and oxygen saturation.
+- Review of cardiovascular risk factors.
+- Consideration of an electrocardiogram when clinically appropriate.
+- Assessment for signs of acute coronary syndrome or other
+  potentially serious causes.
+- Consideration of pulmonary and other differential causes
+  based on the clinical presentation.
+
+Patients with severe, worsening, or concerning symptoms may
+require urgent medical evaluation.
+
+This document is intended only as a demonstration knowledge
+source for an AI clinical decision support prototype.
+
+It does not provide patient-specific diagnosis or treatment
+recommendations.

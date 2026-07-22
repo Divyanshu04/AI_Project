@@ -1,0 +1,36 @@
+CLINICASENSE AI - DEMO CLINICAL KNOWLEDGE BASE
+
+TOPIC: RESPIRATORY CONDITIONS
+
+This document is a demonstration knowledge resource
+for the ClinicaSense AI prototype.
+
+Evaluation of respiratory symptoms should consider the
+duration, severity, associated symptoms, medical history,
+and physical findings.
+
+Important clinical considerations may include:
+
+- Assessment of respiratory rate and oxygen saturation.
+- Evaluation of shortness of breath and its severity.
+- Assessment for cough, fever, chest discomfort, or wheezing.
+- Review of smoking and environmental exposure history.
+- Consideration of asthma, infection, pulmonary embolism,
+  cardiac causes, and other differential diagnoses when
+  clinically appropriate.
+- Review of relevant past respiratory and cardiovascular history.
+- Consideration of appropriate diagnostic evaluation based
+  on the clinical presentation.
+
+Severe difficulty breathing, low oxygen saturation, cyanosis,
+altered mental status, or rapidly worsening respiratory symptoms
+may require urgent medical evaluation.
+
+Clinical assessment and management should be performed by
+qualified healthcare professionals.
+
+This document is intended only as a demonstration knowledge
+source for an AI clinical decision support prototype.
+
+It does not provide patient-specific diagnosis or treatment
+recommendations.

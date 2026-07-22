@@ -1,0 +1,38 @@
+CLINICASENSE AI - DEMO CLINICAL KNOWLEDGE BASE
+
+TOPIC: HYPERTENSION
+
+This document is a demonstration knowledge resource
+for the ClinicaSense AI prototype.
+
+Hypertension is a condition characterized by persistently
+elevated blood pressure. Clinical evaluation should consider
+blood pressure measurements obtained using appropriate
+technique and repeated measurements when clinically
+appropriate.
+
+Important clinical considerations may include:
+
+- Review of blood pressure measurements and measurement technique.
+- Assessment of cardiovascular risk factors.
+- Review of medical history and relevant comorbidities.
+- Review of current medications and adherence.
+- Assessment of lifestyle factors such as dietary patterns,
+  physical activity, smoking, and alcohol use.
+- Consideration of renal function and other relevant laboratory
+  evaluation based on the clinical context.
+- Assessment for symptoms or findings that may suggest
+  hypertensive emergency or acute target-organ involvement.
+
+Severely elevated blood pressure accompanied by concerning
+symptoms or evidence of acute organ injury requires urgent
+clinical assessment.
+
+Management decisions should be individualized by qualified
+healthcare professionals based on the complete clinical picture.
+
+This document is intended only as a demonstration knowledge
+source for an AI clinical decision support prototype.
+
+It does not provide patient-specific diagnosis or treatment
+recommendations.

@@ -1,0 +1,35 @@
+CLINICASENSE AI - DEMO CLINICAL KNOWLEDGE BASE
+
+TOPIC: DIABETES
+
+This document is a demonstration knowledge resource
+for the ClinicaSense AI prototype.
+
+Clinical evaluation of a patient with possible or known diabetes
+should consider symptoms, medical history, laboratory findings,
+medications, and relevant risk factors.
+
+Important clinical considerations may include:
+
+- Review of symptoms such as increased thirst and urination.
+- Review of blood glucose measurements when available.
+- Consideration of HbA1c testing when clinically appropriate.
+- Assessment of cardiovascular risk factors.
+- Review of renal function.
+- Assessment of medication use and adherence.
+- Evaluation of lifestyle factors and nutritional patterns.
+- Consideration of complications associated with prolonged
+  hyperglycemia.
+
+Patients with symptoms suggesting severe hyperglycemia,
+significant dehydration, altered mental status, or other
+concerning findings may require urgent clinical evaluation.
+
+Clinical management should be individualized by qualified
+healthcare professionals.
+
+This document is intended only as a demonstration knowledge
+source for an AI clinical decision support prototype.
+
+It does not provide patient-specific diagnosis or treatment
+recommendations.

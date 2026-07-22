@@ -1,0 +1,36 @@
+CLINICASENSE AI - DEMO CLINICAL KNOWLEDGE BASE
+
+TOPIC: MEDICATION SAFETY
+
+This document is a demonstration knowledge resource
+for the ClinicaSense AI prototype.
+
+Medication safety assessment should consider the complete
+medication list, allergies, medical history, kidney and liver
+function, and potential interactions.
+
+Important clinical considerations may include:
+
+- Review of all prescribed and non-prescription medications.
+- Review of medication allergies and previous adverse reactions.
+- Assessment of possible drug-drug interactions.
+- Assessment of possible drug-disease interactions.
+- Review of medication dosing and adherence.
+- Consideration of renal and hepatic function when relevant.
+- Review of recently started or discontinued medications.
+- Assessment of symptoms that may represent an adverse
+  drug reaction.
+
+Patients experiencing severe allergic reactions, difficulty
+breathing, severe swelling, significant bleeding, loss of
+consciousness, or other potentially serious adverse reactions
+may require urgent medical evaluation.
+
+Medication changes should be reviewed with an appropriately
+qualified healthcare professional.
+
+This document is intended only as a demonstration knowledge
+source for an AI clinical decision support prototype.
+
+It does not provide patient-specific diagnosis or treatment
+recommendations.
