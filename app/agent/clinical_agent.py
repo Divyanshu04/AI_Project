@@ -30,34 +30,57 @@ def run_clinical_agent(
             "response",
             "",
         ),
+
         "safety": final_state.get(
             "safety",
             {},
         ),
+
         "evidence": final_state.get(
             "evidence",
             [],
         ),
+
+        "evidence_details": final_state.get(
+            "evidence_details",
+            [],
+        ),
+
         "sources": final_state.get(
             "sources",
             [],
         ),
+
+        "rag_confidence": final_state.get(
+            "rag_confidence",
+            0.0,
+        ),
+
+        "rag_confidence_level": final_state.get(
+            "rag_confidence_level",
+            "LOW",
+        ),
+
         "intent": final_state.get(
             "intent",
             "",
         ),
+
         "clinical_domain": final_state.get(
             "clinical_domain",
             "",
         ),
+
         "output_safe": final_state.get(
             "output_safe",
             False,
         ),
+
         "safety_message": final_state.get(
             "safety_message",
             "",
         ),
+
         "workflow_status": final_state.get(
             "workflow_status",
             "",

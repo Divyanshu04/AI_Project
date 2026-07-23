@@ -29,21 +29,49 @@ def add_documents(
 ):
 
     collection.add(
+
         ids=[
             f"doc_{i}"
             for i in range(
                 len(documents)
             )
         ],
+
         documents=[
             doc["text"]
             for doc in documents
         ],
+
         embeddings=embeddings,
+
         metadatas=[
             {
-                "source": doc["source"]
+                "source": doc.get(
+                    "source",
+                    "Unknown",
+                ),
+
+                "domain": doc.get(
+                    "domain",
+                    "GENERAL_CLINICAL",
+                ),
+
+                "document_id": doc.get(
+                    "document_id",
+                    "",
+                ),
+
+                "evidence_level": doc.get(
+                    "evidence_level",
+                    "DEMO",
+                ),
+
+                "publication_year": doc.get(
+                    "publication_year",
+                    "N/A",
+                ),
             }
+
             for doc in documents
         ],
     )
@@ -56,38 +84,50 @@ def add_documents(
 def search_documents(
         query_embedding: list[float],
         n_results: int = 3,
-        where: dict | None = None,
+        clinical_domain: str | None = None,
 ):
 
-    # -----------------------------------------
-    # Build query arguments
-    # -----------------------------------------
+    # =========================================
+    # DOMAIN-AWARE SEARCH
+    # =========================================
 
-    query_args = {
-        "query_embeddings": [
-            query_embedding
-        ],
-        "n_results": n_results,
-    }
+    if (
+            clinical_domain
+            and clinical_domain
+            != "GENERAL_CLINICAL"
+    ):
 
+        results = collection.query(
 
-    # -----------------------------------------
-    # Add metadata filter
-    # -----------------------------------------
+            query_embeddings=[
+                query_embedding
+            ],
 
-    if where:
+            n_results=n_results,
 
-        query_args[
-            "where"
-        ] = where
+            # ---------------------------------
+            # Metadata filtering
+            # ---------------------------------
 
+            where={
+                "domain": clinical_domain
+            },
+        )
 
-    # -----------------------------------------
-    # Query ChromaDB
-    # -----------------------------------------
+    else:
 
-    results = collection.query(
-        **query_args
-    )
+        # =====================================
+        # GENERAL SEARCH
+        # =====================================
+
+        results = collection.query(
+
+            query_embeddings=[
+                query_embedding
+            ],
+
+            n_results=n_results,
+        )
+
 
     return results

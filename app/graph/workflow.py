@@ -14,6 +14,8 @@ from app.graph.nodes import (
     clinical_domain_router_node,
     high_risk_response_node,
     rag_node,
+    evidence_quality_node,
+    insufficient_evidence_response_node,
     prompt_node,
     llm_node,
     output_guardrail_node,
@@ -21,7 +23,7 @@ from app.graph.nodes import (
 
 
 # =========================================
-# CONDITIONAL ROUTER
+# CONDITIONAL ROUTER 1: INTENT
 # =========================================
 
 def route_after_intent(
@@ -38,6 +40,26 @@ def route_after_intent(
         return "high_risk"
 
     return "clinical"
+
+
+# =========================================
+# CONDITIONAL ROUTER 2: EVIDENCE QUALITY
+# =========================================
+
+def route_after_evidence(
+        state: ClinicalAgentState,
+) -> str:
+
+    proceed_with_llm = state.get(
+        "proceed_with_llm",
+        False,
+    )
+
+    if proceed_with_llm:
+
+        return "continue"
+
+    return "insufficient"
 
 
 # =========================================
@@ -78,6 +100,16 @@ def build_clinical_graph():
     graph.add_node(
         "rag",
         rag_node,
+    )
+
+    graph.add_node(
+        "evidence_quality",
+        evidence_quality_node,
+    )
+
+    graph.add_node(
+        "insufficient_evidence",
+        insufficient_evidence_response_node,
     )
 
     graph.add_node(
@@ -127,6 +159,7 @@ def build_clinical_graph():
             "high_risk": (
                 "high_risk_response"
             ),
+
             "clinical": (
                 "clinical_domain_router"
             ),
@@ -155,12 +188,41 @@ def build_clinical_graph():
 
 
     # =========================================
-    # RAG → PROMPT BUILDER
+    # RAG → EVIDENCE QUALITY GATE
     # =========================================
 
     graph.add_edge(
         "rag",
-        "prompt",
+        "evidence_quality",
+    )
+
+
+    # =========================================
+    # EVIDENCE QUALITY CONDITIONAL ROUTING
+    # =========================================
+
+    graph.add_conditional_edges(
+        "evidence_quality",
+        route_after_evidence,
+        {
+            "continue": (
+                "prompt"
+            ),
+
+            "insufficient": (
+                "insufficient_evidence"
+            ),
+        },
+    )
+
+
+    # =========================================
+    # INSUFFICIENT EVIDENCE → END
+    # =========================================
+
+    graph.add_edge(
+        "insufficient_evidence",
+        END,
     )
 
 

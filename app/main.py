@@ -97,6 +97,21 @@ if st.button(
             "clinical_domain",
             "UNKNOWN"
         )
+        rag_confidence = result.get(
+            "rag_confidence",
+            0.0,
+        )
+
+        rag_confidence_level = result.get(
+            "rag_confidence_level",
+            "LOW",
+        )
+
+        evidence_details = result.get(
+            "evidence_details",
+            []
+        )
+
 
         output_safe = result.get(
             "output_safe",

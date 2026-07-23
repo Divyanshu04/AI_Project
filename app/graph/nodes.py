@@ -37,6 +37,7 @@ def safety_node(
 
     return {
         "safety": safety_result,
+
         "workflow_status": (
             "Safety screening completed"
         ),
@@ -67,6 +68,7 @@ def intent_router_node(
 
     return {
         "intent": intent,
+
         "workflow_status": (
             f"Intent classified as: {intent}"
         ),
@@ -140,6 +142,7 @@ def clinical_domain_router_node(
 
     return {
         "clinical_domain": domain,
+
         "workflow_status": (
             f"Clinical domain classified as: "
             f"{domain}"
@@ -173,6 +176,15 @@ serious symptoms or clinical concerns.
         "may be required."
     ) }
 
+### Detected High-Risk Terms
+
+{", ".join(
+        safety_result.get(
+            "detected_terms",
+            [],
+        )
+    ) or "Potentially serious clinical concern"}
+
 ### Recommended Action
 
 The patient should be evaluated promptly by a
@@ -190,14 +202,23 @@ or replace professional clinical judgment.
 
     return {
         "response": response,
+
         "workflow_status": (
             "High-risk safety response generated"
         ),
+
         "output_safe": True,
+
         "safety_message": (
             "High-risk case routed directly "
             "to safety response."
         ),
+
+        "evidence_quality": (
+            "NOT_EVALUATED"
+        ),
+
+        "proceed_with_llm": False,
     }
 
 
@@ -213,18 +234,14 @@ def rag_node(
         "clinical_case"
     ]
 
-    # -----------------------------------------
-    # Get clinical domain from router
-    # -----------------------------------------
-
     clinical_domain = state.get(
         "clinical_domain",
         "GENERAL_CLINICAL",
     )
 
-    # -----------------------------------------
-    # Domain-aware Medical RAG
-    # -----------------------------------------
+    # =========================================
+    # DOMAIN-AWARE RAG
+    # =========================================
 
     rag_result = (
         retrieve_clinical_evidence(
@@ -234,35 +251,229 @@ def rag_node(
         )
     )
 
-    # -----------------------------------------
-    # Extract Sources
-    # -----------------------------------------
+    # =========================================
+    # EXTRACT RESULTS
+    # =========================================
 
-    sources = [
-        source["source"]
-        for source in rag_result[
-            "sources"
-        ]
-    ]
+    evidence = rag_result.get(
+        "evidence",
+        [],
+    )
 
-    # -----------------------------------------
-    # Return RAG Results
-    # -----------------------------------------
+    documents = rag_result.get(
+        "documents",
+        [],
+    )
+
+    sources = rag_result.get(
+        "sources",
+        [],
+    )
+
+    confidence = rag_result.get(
+        "confidence",
+        0.0,
+    )
+
+    confidence_level = rag_result.get(
+        "confidence_level",
+        "LOW",
+    )
+
+    # =========================================
+    # RETURN STATE
+    # =========================================
 
     return {
-        "evidence": rag_result[
-            "documents"
-        ],
+        "evidence": documents,
+
+        "evidence_details": evidence,
+
         "sources": sources,
+
+        "rag_confidence": confidence,
+
+        "rag_confidence_level": (
+            confidence_level
+        ),
+
         "workflow_status": (
             f"Clinical evidence retrieved "
-            f"for domain: {clinical_domain}"
+            f"for domain: {clinical_domain} "
+            f"| Confidence: {confidence_level}"
         ),
     }
 
 
 # =========================================
-# NODE 6: PROMPT BUILDER
+# NODE 6: EVIDENCE QUALITY GATE
+# =========================================
+
+def evidence_quality_node(
+        state: dict,
+) -> dict:
+
+    confidence = state.get(
+        "rag_confidence",
+        0.0,
+    )
+
+    confidence_level = state.get(
+        "rag_confidence_level",
+        "LOW",
+    )
+
+    evidence = state.get(
+        "evidence",
+        [],
+    )
+
+    # =========================================
+    # NO EVIDENCE RETRIEVED
+    # =========================================
+
+    if not evidence:
+
+        return {
+            "evidence_quality": (
+                "INSUFFICIENT"
+            ),
+
+            "evidence_quality_message": (
+                "No relevant clinical evidence "
+                "was retrieved from the knowledge base."
+            ),
+
+            "proceed_with_llm": False,
+
+            "workflow_status": (
+                "Evidence quality check failed: "
+                "No evidence available"
+            ),
+        }
+
+
+    # =========================================
+    # LOW CONFIDENCE EVIDENCE
+    # =========================================
+
+    if confidence_level == "LOW":
+
+        return {
+            "evidence_quality": (
+                "INSUFFICIENT"
+            ),
+
+            "evidence_quality_message": (
+                "The retrieved clinical evidence "
+                "did not meet the minimum relevance "
+                "threshold required for an "
+                "evidence-grounded response."
+            ),
+
+            "proceed_with_llm": False,
+
+            "workflow_status": (
+                "Evidence quality check failed: "
+                "Low retrieval confidence"
+            ),
+        }
+
+
+    # =========================================
+    # SUFFICIENT EVIDENCE
+    # =========================================
+
+    return {
+        "evidence_quality": (
+            "SUFFICIENT"
+        ),
+
+        "evidence_quality_message": (
+            "Relevant clinical evidence was "
+            "retrieved successfully."
+        ),
+
+        "proceed_with_llm": True,
+
+        "workflow_status": (
+            f"Evidence quality check passed: "
+            f"{confidence_level} confidence"
+        ),
+    }
+
+
+# =========================================
+# NODE 7: INSUFFICIENT EVIDENCE RESPONSE
+# =========================================
+
+def insufficient_evidence_response_node(
+        state: dict,
+) -> dict:
+
+    message = state.get(
+        "evidence_quality_message",
+        "Insufficient clinical evidence "
+        "was retrieved.",
+    )
+
+    clinical_domain = state.get(
+        "clinical_domain",
+        "GENERAL_CLINICAL",
+    )
+
+    response = f"""
+## ⚠️ Insufficient Clinical Evidence
+
+ClinicaSense AI could not retrieve sufficient
+relevant evidence from the current clinical
+knowledge base to provide a reliable
+evidence-grounded response.
+
+### Clinical Domain
+
+**{clinical_domain}**
+
+### Evidence Quality
+
+**INSUFFICIENT**
+
+### Reason
+
+{message}
+
+### Recommended Action
+
+The question should be reviewed using
+appropriate clinical guidelines, validated
+medical references, or qualified healthcare
+professionals.
+
+ClinicaSense AI does not provide a diagnosis
+or substitute for professional clinical judgment.
+"""
+
+    return {
+        "response": response,
+
+        "output_safe": True,
+
+        "safety_message": (
+            "Response safely withheld because "
+            "insufficient clinical evidence "
+            "was available."
+        ),
+
+        "proceed_with_llm": False,
+
+        "workflow_status": (
+            "Insufficient evidence response generated"
+        ),
+    }
+
+
+# =========================================
+# NODE 8: PROMPT BUILDER
 # =========================================
 
 def prompt_node(
@@ -297,6 +508,7 @@ def prompt_node(
 
     return {
         "prompt": prompt,
+
         "workflow_status": (
             f"Evidence-grounded prompt created "
             f"for domain: {clinical_domain}"
@@ -305,7 +517,7 @@ def prompt_node(
 
 
 # =========================================
-# NODE 7: GEMINI LLM
+# NODE 9: GEMINI LLM
 # =========================================
 
 def llm_node(
@@ -322,6 +534,7 @@ def llm_node(
 
     return {
         "response": response,
+
         "workflow_status": (
             "Clinical response generated"
         ),
@@ -329,7 +542,7 @@ def llm_node(
 
 
 # =========================================
-# NODE 8: OUTPUT GUARDRAIL
+# NODE 10: OUTPUT GUARDRAIL
 # =========================================
 
 def output_guardrail_node(
@@ -364,11 +577,13 @@ def output_guardrail_node(
 
         return {
             "output_safe": False,
+
             "safety_message": (
                 "The generated response contained "
                 "potentially unsafe clinical language "
                 "and requires professional review."
             ),
+
             "workflow_status": (
                 "Output safety check failed"
             ),
@@ -380,9 +595,11 @@ def output_guardrail_node(
 
     return {
         "output_safe": True,
+
         "safety_message": (
             "Output safety validation passed."
         ),
+
         "workflow_status": (
             "Output safety check completed"
         ),

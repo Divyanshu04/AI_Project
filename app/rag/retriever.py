@@ -8,35 +8,64 @@ from app.rag.vector_store import (
 
 
 # =========================================
-# CLINICAL DOMAIN → SOURCE MAPPING
+# CONFIDENCE CALCULATION
 # =========================================
 
-DOMAIN_SOURCE_MAP = {
+def calculate_confidence(
+        distance: float,
+) -> float:
 
-    "CARDIOVASCULAR": [
-        "cardiovascular_demo.txt",
-    ],
+    """
+    Convert ChromaDB distance into a simple
+    prototype retrieval similarity score.
 
-    "HYPERTENSION": [
-        "hypertension.txt",
-    ],
+    Lower distance = higher similarity.
 
-    "DIABETES": [
-        "diabetes.txt",
-    ],
+    NOTE:
+    This is a prototype heuristic.
+    It is NOT a clinically validated
+    confidence score.
+    """
 
-    "RESPIRATORY": [
-        "respiratory_conditions.txt",
-    ],
+    confidence = (
+                         1.0 - float(distance)
+                 ) * 100
 
-    "MEDICATION_SAFETY": [
-        "medication_safety.txt",
-    ],
-}
+    confidence = max(
+        0.0,
+        min(
+            100.0,
+            confidence,
+        ),
+    )
+
+    return round(
+        confidence,
+        2,
+    )
 
 
 # =========================================
-# MEDICAL RAG RETRIEVER
+# CONFIDENCE LEVEL
+# =========================================
+
+def get_confidence_level(
+        confidence: float,
+) -> str:
+
+    if confidence >= 70:
+
+        return "HIGH"
+
+    if confidence >= 40:
+
+        return "MEDIUM"
+
+    return "LOW"
+
+
+# =========================================
+# CLINICAL EVIDENCE RETRIEVER
 # =========================================
 
 def retrieve_clinical_evidence(
@@ -45,71 +74,229 @@ def retrieve_clinical_evidence(
         clinical_domain: str | None = None,
 ) -> dict:
 
-    # -----------------------------------------
-    # Generate query embedding
-    # -----------------------------------------
+    # =========================================
+    # GENERATE QUERY EMBEDDING
+    # =========================================
 
     query_embedding = generate_embeddings(
         [query]
     )[0]
 
 
-    # -----------------------------------------
-    # Determine metadata filter
-    # -----------------------------------------
-
-    source_filter = None
-
-    if clinical_domain:
-
-        sources = DOMAIN_SOURCE_MAP.get(
-            clinical_domain.upper(),
-            [],
-        )
-
-        if len(sources) == 1:
-
-            source_filter = {
-                "source": sources[0]
-            }
-
-
-    # -----------------------------------------
-    # Search ChromaDB
-    # -----------------------------------------
+    # =========================================
+    # SEARCH VECTOR DATABASE
+    # =========================================
 
     results = search_documents(
         query_embedding=query_embedding,
         n_results=n_results,
-        where=source_filter,
+        clinical_domain=clinical_domain,
     )
 
 
-    # -----------------------------------------
-    # Extract documents
-    # -----------------------------------------
+    # =========================================
+    # EXTRACT RESULTS
+    # =========================================
 
     documents = results.get(
         "documents",
         [[]],
     )[0]
 
-
-    # -----------------------------------------
-    # Extract metadata
-    # -----------------------------------------
-
     metadatas = results.get(
         "metadatas",
         [[]],
     )[0]
 
+    distances = results.get(
+        "distances",
+        [[]],
+    )[0]
 
-    # -----------------------------------------
-    # Return RAG results
-    # -----------------------------------------
+
+    # =========================================
+    # BUILD EVIDENCE DETAILS
+    # =========================================
+
+    evidence_details = []
+
+    confidence_scores = []
+
+
+    for index, document in enumerate(
+            documents
+    ):
+
+        # -----------------------------------------
+        # Get Metadata
+        # -----------------------------------------
+
+        metadata = {}
+
+        if index < len(
+                metadatas
+        ):
+
+            metadata = (
+                    metadatas[index]
+                    or {}
+            )
+
+
+        # -----------------------------------------
+        # Get Distance
+        # -----------------------------------------
+
+        distance = 0.0
+
+        if index < len(
+                distances
+        ):
+
+            distance = float(
+                distances[index]
+            )
+
+
+        # -----------------------------------------
+        # Calculate Retrieval Score
+        # -----------------------------------------
+
+        confidence = (
+            calculate_confidence(
+                distance
+            )
+        )
+
+
+        confidence_level = (
+            get_confidence_level(
+                confidence
+            )
+        )
+
+
+        confidence_scores.append(
+            confidence
+        )
+
+
+        # -----------------------------------------
+        # Evidence Details
+        # -----------------------------------------
+
+        evidence_details.append(
+            {
+                "text": document,
+
+                "source": metadata.get(
+                    "source",
+                    "Unknown",
+                ),
+
+                "domain": metadata.get(
+                    "domain",
+                    clinical_domain
+                    or "GENERAL_CLINICAL",
+                    ),
+
+                "document_id": metadata.get(
+                    "document_id",
+                    "",
+                ),
+
+                "evidence_level": metadata.get(
+                    "evidence_level",
+                    "DEMO",
+                ),
+
+                "publication_year": metadata.get(
+                    "publication_year",
+                    "N/A",
+                ),
+
+                "distance": distance,
+
+                "confidence": confidence,
+
+                "confidence_level": (
+                    confidence_level
+                ),
+            }
+        )
+
+
+    # =========================================
+    # OVERALL RETRIEVAL SCORE
+    # =========================================
+
+    if confidence_scores:
+
+        overall_confidence = max(
+            confidence_scores
+        )
+
+    else:
+
+        overall_confidence = 0.0
+
+
+    overall_confidence_level = (
+        get_confidence_level(
+            overall_confidence
+        )
+    )
+
+
+    # =========================================
+    # SOURCE LIST
+    # =========================================
+
+    sources = [
+
+        metadata.get(
+            "source",
+            "Unknown",
+        )
+
+        for metadata in metadatas
+
+    ]
+
+
+    # =========================================
+    # RETURN RETRIEVAL RESULT
+    # =========================================
 
     return {
-        "documents": documents,
-        "sources": metadatas,
+
+        # Detailed evidence objects
+
+        "evidence": (
+            evidence_details
+        ),
+
+        # Raw document text
+
+        "documents": (
+            documents
+        ),
+
+        # Evidence sources
+
+        "sources": (
+            sources
+        ),
+
+        # Overall retrieval score
+
+        "confidence": (
+            overall_confidence
+        ),
+
+        # HIGH / MEDIUM / LOW
+
+        "confidence_level": (
+            overall_confidence_level
+        ),
     }
