@@ -88,7 +88,7 @@ def clinical_domain_router_node(
     ]
 
     # -----------------------------------------
-    # Build domain classification prompt
+    # Build Domain Classification Prompt
     # -----------------------------------------
 
     prompt = build_router_prompt(
@@ -96,7 +96,7 @@ def clinical_domain_router_node(
     )
 
     # -----------------------------------------
-    # Ask Gemini for domain classification
+    # Ask Gemini
     # -----------------------------------------
 
     raw_domain = ask_gemini(
@@ -104,7 +104,7 @@ def clinical_domain_router_node(
     )
 
     # -----------------------------------------
-    # Normalize domain
+    # Normalize Domain
     # -----------------------------------------
 
     domain = (
@@ -118,7 +118,7 @@ def clinical_domain_router_node(
     )
 
     # -----------------------------------------
-    # Allowed clinical domains
+    # Allowed Clinical Domains
     # -----------------------------------------
 
     valid_domains = {
@@ -131,7 +131,7 @@ def clinical_domain_router_node(
     }
 
     # -----------------------------------------
-    # Fallback for unexpected LLM output
+    # Fallback
     # -----------------------------------------
 
     if domain not in valid_domains:
@@ -176,15 +176,6 @@ serious symptoms or clinical concerns.
         "may be required."
     ) }
 
-### Detected High-Risk Terms
-
-{", ".join(
-        safety_result.get(
-            "detected_terms",
-            [],
-        )
-    ) or "Potentially serious clinical concern"}
-
 ### Recommended Action
 
 The patient should be evaluated promptly by a
@@ -214,8 +205,21 @@ or replace professional clinical judgment.
             "to safety response."
         ),
 
+        # No RAG for high-risk cases
+        "evidence": [],
+
+        "evidence_details": [],
+
+        "sources": [],
+
+        "rag_confidence": 0.0,
+
+        "rag_confidence_level": (
+            "NOT_EXECUTED"
+        ),
+
         "evidence_quality": (
-            "NOT_EVALUATED"
+            "NOT_EXECUTED"
         ),
 
         "proceed_with_llm": False,
@@ -300,7 +304,8 @@ def rag_node(
         "workflow_status": (
             f"Clinical evidence retrieved "
             f"for domain: {clinical_domain} "
-            f"| Confidence: {confidence_level}"
+            f"| Confidence: {confidence_level} "
+            f"| Score: {confidence}"
         ),
     }
 
@@ -328,6 +333,12 @@ def evidence_quality_node(
         [],
     )
 
+    clinical_domain = state.get(
+        "clinical_domain",
+        "GENERAL_CLINICAL",
+    )
+
+
     # =========================================
     # NO EVIDENCE RETRIEVED
     # =========================================
@@ -354,10 +365,10 @@ def evidence_quality_node(
 
 
     # =========================================
-    # LOW CONFIDENCE EVIDENCE
+    # INSUFFICIENT CONFIDENCE
     # =========================================
 
-    if confidence_level == "LOW":
+    if confidence_level == "INSUFFICIENT":
 
         return {
             "evidence_quality": (
@@ -367,21 +378,50 @@ def evidence_quality_node(
             "evidence_quality_message": (
                 "The retrieved clinical evidence "
                 "did not meet the minimum relevance "
-                "threshold required for an "
-                "evidence-grounded response."
+                "threshold for evidence-grounded reasoning."
             ),
 
             "proceed_with_llm": False,
 
             "workflow_status": (
                 "Evidence quality check failed: "
-                "Low retrieval confidence"
+                "Insufficient retrieval confidence"
             ),
         }
 
 
     # =========================================
-    # SUFFICIENT EVIDENCE
+    # LOW CONFIDENCE
+    # =========================================
+
+    if confidence_level == "LOW":
+
+        return {
+            "evidence_quality": (
+                "LIMITED"
+            ),
+
+            "evidence_quality_message": (
+                f"Relevant {clinical_domain} clinical "
+                "evidence was retrieved, but retrieval "
+                "confidence is limited. The response "
+                "must clearly identify evidence limitations "
+                "and avoid unsupported conclusions."
+            ),
+
+            # Allow LLM with warning
+            "proceed_with_llm": True,
+
+            "workflow_status": (
+                f"Evidence quality limited: "
+                f"{confidence_level} confidence "
+                f"| Score: {confidence}"
+            ),
+        }
+
+
+    # =========================================
+    # MEDIUM / HIGH CONFIDENCE
     # =========================================
 
     return {
@@ -390,15 +430,17 @@ def evidence_quality_node(
         ),
 
         "evidence_quality_message": (
-            "Relevant clinical evidence was "
-            "retrieved successfully."
+            f"Relevant {clinical_domain} clinical "
+            f"evidence was retrieved successfully "
+            f"with {confidence_level} retrieval confidence."
         ),
 
         "proceed_with_llm": True,
 
         "workflow_status": (
             f"Evidence quality check passed: "
-            f"{confidence_level} confidence"
+            f"{confidence_level} confidence "
+            f"| Score: {confidence}"
         ),
     }
 
@@ -411,46 +453,45 @@ def insufficient_evidence_response_node(
         state: dict,
 ) -> dict:
 
-    message = state.get(
-        "evidence_quality_message",
-        "Insufficient clinical evidence "
-        "was retrieved.",
-    )
-
     clinical_domain = state.get(
         "clinical_domain",
         "GENERAL_CLINICAL",
     )
 
-    response = f"""
-## ⚠️ Insufficient Clinical Evidence
+    evidence_quality_message = state.get(
+        "evidence_quality_message",
+        "The available clinical evidence "
+        "was insufficient.",
+    )
 
-ClinicaSense AI could not retrieve sufficient
-relevant evidence from the current clinical
-knowledge base to provide a reliable
-evidence-grounded response.
+    response = f"""
+## ⚠️ Limited Clinical Evidence
+
+ClinicaSense AI retrieved clinical information
+related to the requested clinical domain, but
+the available evidence is not strong enough to
+support a reliable evidence-grounded response.
 
 ### Clinical Domain
 
-**{clinical_domain}**
+{clinical_domain}
 
 ### Evidence Quality
 
-**INSUFFICIENT**
+INSUFFICIENT
 
 ### Reason
 
-{message}
+{evidence_quality_message}
 
 ### Recommended Action
 
-The question should be reviewed using
-appropriate clinical guidelines, validated
-medical references, or qualified healthcare
-professionals.
+The clinical question should be reviewed using
+appropriate clinical guidelines, validated medical
+references, or qualified healthcare professionals.
 
-ClinicaSense AI does not provide a diagnosis
-or substitute for professional clinical judgment.
+ClinicaSense AI does not provide a diagnosis and
+does not substitute for professional clinical judgment.
 """
 
     return {
@@ -459,12 +500,9 @@ or substitute for professional clinical judgment.
         "output_safe": True,
 
         "safety_message": (
-            "Response safely withheld because "
-            "insufficient clinical evidence "
-            "was available."
+            "Response limited because sufficient "
+            "clinical evidence was not available."
         ),
-
-        "proceed_with_llm": False,
 
         "workflow_status": (
             "Insufficient evidence response generated"
@@ -493,6 +531,26 @@ def prompt_node(
         "GENERAL_CLINICAL",
     )
 
+    evidence_quality = state.get(
+        "evidence_quality",
+        "UNKNOWN",
+    )
+
+    evidence_quality_message = state.get(
+        "evidence_quality_message",
+        "",
+    )
+
+    rag_confidence = state.get(
+        "rag_confidence",
+        0.0,
+    )
+
+    rag_confidence_level = state.get(
+        "rag_confidence_level",
+        "UNKNOWN",
+    )
+
     evidence = "\n\n".join(
         state.get(
             "evidence",
@@ -500,10 +558,30 @@ def prompt_node(
         )
     )
 
+    # =========================================
+    # BUILD EVIDENCE-GROUNDED PROMPT
+    # =========================================
+
     prompt = build_clinical_prompt(
         clinical_case=clinical_case,
+
         safety_result=safety_result,
+
         evidence=evidence,
+
+        clinical_domain=clinical_domain,
+
+        evidence_quality=evidence_quality,
+
+        evidence_quality_message=(
+            evidence_quality_message
+        ),
+
+        rag_confidence=rag_confidence,
+
+        rag_confidence_level=(
+            rag_confidence_level
+        ),
     )
 
     return {
@@ -511,7 +589,9 @@ def prompt_node(
 
         "workflow_status": (
             f"Evidence-grounded prompt created "
-            f"for domain: {clinical_domain}"
+            f"for domain: {clinical_domain} "
+            f"| Evidence Quality: "
+            f"{evidence_quality}"
         ),
     }
 
@@ -555,23 +635,42 @@ def output_guardrail_node(
     )
 
     unsafe_phrases = [
+
         "you definitely have",
+
         "you are diagnosed with",
+
         "take this medication",
+
         "stop your medication",
+
+        "you should definitely take",
+
+        "this confirms your diagnosis",
+
+        "you have a heart attack",
+
+        "you have cancer",
+
     ]
 
-    response_lower = response.lower()
+    response_lower = (
+        response.lower()
+    )
 
     detected_unsafe_phrases = [
+
         phrase
+
         for phrase in unsafe_phrases
+
         if phrase in response_lower
+
     ]
 
-    # -----------------------------------------
-    # Unsafe Output Detected
-    # -----------------------------------------
+    # =========================================
+    # UNSAFE OUTPUT DETECTED
+    # =========================================
 
     if detected_unsafe_phrases:
 
@@ -589,9 +688,10 @@ def output_guardrail_node(
             ),
         }
 
-    # -----------------------------------------
-    # Output Passed Guardrail
-    # -----------------------------------------
+
+    # =========================================
+    # OUTPUT PASSED GUARDRAIL
+    # =========================================
 
     return {
         "output_safe": True,

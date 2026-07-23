@@ -16,33 +16,69 @@ def calculate_confidence(
 ) -> float:
 
     """
-    Convert ChromaDB distance into a simple
-    prototype retrieval similarity score.
+    Convert ChromaDB vector distance into a
+    prototype retrieval confidence score.
 
-    Lower distance = higher similarity.
+    Lower distance = better similarity.
 
-    NOTE:
-    This is a prototype heuristic.
+    IMPORTANT:
+    This is an engineering heuristic for the
+    ClinicaSense AI prototype.
+
     It is NOT a clinically validated
     confidence score.
     """
 
-    confidence = (
-                         1.0 - float(distance)
-                 ) * 100
-
-    confidence = max(
-        0.0,
-        min(
-            100.0,
-            confidence,
-        ),
+    distance = float(
+        distance
     )
 
-    return round(
-        confidence,
-        2,
-    )
+    # -----------------------------------------
+    # Very strong similarity
+    # -----------------------------------------
+
+    if distance <= 0.30:
+
+        confidence = 90.0
+
+
+    # -----------------------------------------
+    # Strong similarity
+    # -----------------------------------------
+
+    elif distance <= 0.50:
+
+        confidence = 80.0
+
+
+    # -----------------------------------------
+    # Moderate similarity
+    # -----------------------------------------
+
+    elif distance <= 0.70:
+
+        confidence = 65.0
+
+
+    # -----------------------------------------
+    # Weak but potentially useful
+    # -----------------------------------------
+
+    elif distance <= 0.90:
+
+        confidence = 45.0
+
+
+    # -----------------------------------------
+    # Poor similarity
+    # -----------------------------------------
+
+    else:
+
+        confidence = 20.0
+
+
+    return confidence
 
 
 # =========================================
@@ -53,15 +89,19 @@ def get_confidence_level(
         confidence: float,
 ) -> str:
 
-    if confidence >= 70:
+    if confidence >= 75:
 
         return "HIGH"
 
-    if confidence >= 40:
+    if confidence >= 50:
 
         return "MEDIUM"
 
-    return "LOW"
+    if confidence >= 30:
+
+        return "LOW"
+
+    return "INSUFFICIENT"
 
 
 # =========================================
@@ -128,7 +168,7 @@ def retrieve_clinical_evidence(
     ):
 
         # -----------------------------------------
-        # Get Metadata
+        # GET METADATA
         # -----------------------------------------
 
         metadata = {}
@@ -144,7 +184,7 @@ def retrieve_clinical_evidence(
 
 
         # -----------------------------------------
-        # Get Distance
+        # GET DISTANCE
         # -----------------------------------------
 
         distance = 0.0
@@ -159,7 +199,7 @@ def retrieve_clinical_evidence(
 
 
         # -----------------------------------------
-        # Calculate Retrieval Score
+        # CALCULATE RETRIEVAL CONFIDENCE
         # -----------------------------------------
 
         confidence = (
@@ -182,7 +222,7 @@ def retrieve_clinical_evidence(
 
 
         # -----------------------------------------
-        # Evidence Details
+        # BUILD EVIDENCE OBJECT
         # -----------------------------------------
 
         evidence_details.append(
@@ -203,6 +243,16 @@ def retrieve_clinical_evidence(
                 "document_id": metadata.get(
                     "document_id",
                     "",
+                ),
+
+                "chunk_id": metadata.get(
+                    "chunk_id",
+                    "",
+                ),
+
+                "chunk_index": metadata.get(
+                    "chunk_index",
+                    0,
                 ),
 
                 "evidence_level": metadata.get(
@@ -227,13 +277,23 @@ def retrieve_clinical_evidence(
 
 
     # =========================================
-    # OVERALL RETRIEVAL SCORE
+    # OVERALL RETRIEVAL CONFIDENCE
     # =========================================
 
     if confidence_scores:
 
-        overall_confidence = max(
-            confidence_scores
+        # -----------------------------------------
+        # Average confidence across retrieved chunks
+        # -----------------------------------------
+
+        overall_confidence = (
+                sum(
+                    confidence_scores
+                )
+                /
+                len(
+                    confidence_scores
+                )
         )
 
     else:
@@ -249,19 +309,21 @@ def retrieve_clinical_evidence(
 
 
     # =========================================
-    # SOURCE LIST
+    # UNIQUE SOURCE LIST
     # =========================================
 
-    sources = [
+    sources = list(
+        dict.fromkeys(
 
-        metadata.get(
-            "source",
-            "Unknown",
+            metadata.get(
+                "source",
+                "Unknown",
+            )
+
+            for metadata in metadatas
+
         )
-
-        for metadata in metadatas
-
-    ]
+    )
 
 
     # =========================================
@@ -270,33 +332,51 @@ def retrieve_clinical_evidence(
 
     return {
 
+        # -----------------------------------------
         # Detailed evidence objects
+        # -----------------------------------------
 
         "evidence": (
             evidence_details
         ),
 
-        # Raw document text
+
+        # -----------------------------------------
+        # Raw retrieved document chunks
+        # -----------------------------------------
 
         "documents": (
             documents
         ),
 
-        # Evidence sources
+
+        # -----------------------------------------
+        # Unique evidence sources
+        # -----------------------------------------
 
         "sources": (
             sources
         ),
 
-        # Overall retrieval score
+
+        # -----------------------------------------
+        # Overall retrieval confidence
+        # -----------------------------------------
 
         "confidence": (
-            overall_confidence
+            round(
+                overall_confidence,
+                2,
+            )
         ),
 
-        # HIGH / MEDIUM / LOW
+
+        # -----------------------------------------
+        # HIGH / MEDIUM / LOW / INSUFFICIENT
+        # -----------------------------------------
 
         "confidence_level": (
             overall_confidence_level
         ),
+
     }

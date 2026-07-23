@@ -31,48 +31,65 @@ def add_documents(
     collection.add(
 
         ids=[
-            f"doc_{i}"
-            for i in range(
-                len(documents)
+            document.get(
+                "chunk_id",
+                f"doc_{i}",
+            )
+
+            for i, document in enumerate(
+                documents
             )
         ],
 
         documents=[
-            doc["text"]
-            for doc in documents
+            document["text"]
+
+            for document in documents
         ],
 
         embeddings=embeddings,
 
         metadatas=[
+
             {
-                "source": doc.get(
+                "source": document.get(
                     "source",
                     "Unknown",
                 ),
 
-                "domain": doc.get(
+                "domain": document.get(
                     "domain",
                     "GENERAL_CLINICAL",
                 ),
 
-                "document_id": doc.get(
+                "document_id": document.get(
                     "document_id",
                     "",
                 ),
 
-                "evidence_level": doc.get(
+                "chunk_id": document.get(
+                    "chunk_id",
+                    "",
+                ),
+
+                "chunk_index": document.get(
+                    "chunk_index",
+                    0,
+                ),
+
+                "evidence_level": document.get(
                     "evidence_level",
                     "DEMO",
                 ),
 
-                "publication_year": doc.get(
+                "publication_year": document.get(
                     "publication_year",
                     "N/A",
                 ),
             }
 
-            for doc in documents
+            for document in documents
+
         ],
     )
 
@@ -91,11 +108,7 @@ def search_documents(
     # DOMAIN-AWARE SEARCH
     # =========================================
 
-    if (
-            clinical_domain
-            and clinical_domain
-            != "GENERAL_CLINICAL"
-    ):
+    if clinical_domain:
 
         results = collection.query(
 
@@ -104,21 +117,14 @@ def search_documents(
             ],
 
             n_results=n_results,
-
-            # ---------------------------------
-            # Metadata filtering
-            # ---------------------------------
 
             where={
                 "domain": clinical_domain
             },
+
         )
 
     else:
-
-        # =====================================
-        # GENERAL SEARCH
-        # =====================================
 
         results = collection.query(
 
@@ -127,6 +133,7 @@ def search_documents(
             ],
 
             n_results=n_results,
+
         )
 
 

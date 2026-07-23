@@ -11,10 +11,9 @@ from app.rag.vector_store import (
 )
 
 
-KNOWLEDGE_PATH = (
-    "app/data/medical_knowledge"
-)
-
+# =========================================
+# MAIN INDEXING PIPELINE
+# =========================================
 
 def main():
 
@@ -22,40 +21,102 @@ def main():
         "Loading medical knowledge..."
     )
 
-    documents = load_documents(
-        KNOWLEDGE_PATH
-    )
+
+    # =========================================
+    # LOAD AND CHUNK DOCUMENTS
+    # =========================================
+
+    documents = load_documents()
+
 
     print(
-        f"Loaded {len(documents)} documents"
+        f"Loaded {len(documents)} "
+        "clinical chunks"
     )
 
-    texts = [
-        doc["text"]
-        for doc in documents
-    ]
+
+    if not documents:
+
+        print(
+            "No medical knowledge documents "
+            "found."
+        )
+
+        return
+
+
+    # =========================================
+    # DISPLAY CHUNK INFORMATION
+    # =========================================
 
     print(
-        "Generating embeddings..."
+        "\nClinical Knowledge Chunks:"
     )
+
+
+    for document in documents:
+
+        print(
+            f"  • "
+            f"{document['domain']} | "
+            f"{document['source']} | "
+            f"{document['chunk_id']}"
+        )
+
+
+    # =========================================
+    # GENERATE EMBEDDINGS
+    # =========================================
+
+    print(
+        "\nGenerating embeddings..."
+    )
+
 
     embeddings = generate_embeddings(
-        texts
+
+        [
+            document["text"]
+            for document in documents
+        ]
+
     )
 
+
+    # =========================================
+    # ADD TO CHROMADB
+    # =========================================
+
     print(
-        "Adding documents to ChromaDB..."
+        "Adding chunks to ChromaDB..."
     )
+
 
     add_documents(
-        documents,
-        embeddings,
+        documents=documents,
+        embeddings=embeddings,
+    )
+
+
+    # =========================================
+    # COMPLETED
+    # =========================================
+
+    print(
+        "\nMedical knowledge indexing "
+        "completed successfully."
     )
 
     print(
-        "Medical knowledge indexed successfully."
+        f"Indexed {len(documents)} "
+        "clinical chunks."
     )
 
 
+# =========================================
+# ENTRY POINT
+# =========================================
+
 if __name__ == "__main__":
+
     main()
